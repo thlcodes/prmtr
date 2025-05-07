@@ -1,0 +1,46 @@
+# @name device_code
+POST https://cors-anywhere.herokuapp.com/https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user
+Accept: application/json
+Origin: http://localhost:123
+
+###
+
+# @name access_token
+POST https://github.com/login/oauth/access_token?client_id=Iv1.b507a08c87ecfe98&device_code={{device_code.device_code}}&grant_type=urn:ietf:params:oauth:grant-type:device_code
+Accept: application/json
+
+###
+
+# @name copilot_token
+GET https://api.github.com/copilot_internal/v2/token
+Authorization: Bearer {{access_token.access_token}}
+Content-Type: application/json
+
+###
+
+# @name chat
+POST https://api.business.githubcopilot.com/chat/completions
+Content-Type: application/json
+Authorization: Bearer {{copilot_token.token}}
+copilot-integration-id: vscode-chat
+
+{
+  "intent": false,
+  "n": 1,
+  "stream": false,
+  "temperature": 0.1,
+  "model": "claude-3.7-sonnet",
+  "messages": [
+    {
+      "role": "user",
+      "content": "can you give me the spec for the api.githubcopilot.com chat completions request and response"
+    }
+  ]
+}
+
+###
+
+# @name userinfo
+GET https://api.github.com/user
+Content-Type: application/json
+Authorization: Bearer {{access_token.access_token}}
