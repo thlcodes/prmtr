@@ -1,7 +1,9 @@
 import { writable, get } from "svelte/store";
+import { CORS_PROXY } from "./common";
 
 const DEVICE_CODE_URL =
-  "https://cors-anywhere.herokuapp.com/https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user";
+  CORS_PROXY +
+  "https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user";
 
 /** @type {import("svelte/store").Writable<{device_code?: string, user_code?: string, access_token?: string, copilot_token?: string, user?: string}>} */
 export const store = writable({
@@ -39,7 +41,8 @@ export async function getDeviceCode() {
 }
 
 const ACCESS_TOKEN_URL =
-  "https://cors-anywhere.herokuapp.com/https://github.com/login/oauth/access_token?client_id=Iv1.b507a08c87ecfe98&grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=";
+  CORS_PROXY +
+  "https://github.com/login/oauth/access_token?client_id=Iv1.b507a08c87ecfe98&grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=";
 
 /**
  * @returns {Promise<number>}
@@ -81,7 +84,7 @@ export async function waitForAccessToken() {
 }
 
 const COPILOT_TOKEN_URL =
-  "https://cors-anywhere.herokuapp.com/https://api.github.com/copilot_internal/v2/token";
+  CORS_PROXY + "https://api.github.com/copilot_internal/v2/token";
 
 /**
  * @returns {Promise<void>}
@@ -109,7 +112,7 @@ export async function getCopilotToken() {
   }));
 }
 
-const USERINFO_URL = "https://api.github.com/user";
+const USERINFO_URL = CORS_PROXY + "https://api.github.com/user";
 
 /**
  * @returns {Promise<void>}

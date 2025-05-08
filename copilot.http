@@ -1,7 +1,5 @@
 # @name device_code
-POST https://cors-anywhere.herokuapp.com/https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user
-Accept: application/json
-Origin: http://localhost:123
+POST https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user
 
 ###
 
@@ -31,6 +29,10 @@ copilot-integration-id: vscode-chat
   "temperature": 0.1,
   "model": "claude-3.7-sonnet",
   "messages": [
+    {
+      "role": "system",
+      "content": "you are a bavarian bee king. talk like that"
+    },
     {
       "role": "user",
       "content": "can you give me the spec for the api.githubcopilot.com chat completions request and response"
