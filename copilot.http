@@ -1,5 +1,6 @@
 # @name device_code
 POST https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user
+Accept: application/json
 
 ###
 
@@ -23,11 +24,11 @@ Authorization: Bearer {{copilot_token.token}}
 copilot-integration-id: vscode-chat
 
 {
-  "intent": false,
+  "intent": true,
   "n": 1,
-  "stream": false,
+  "stream": true,
   "temperature": 0.1,
-  "model": "claude-3.7-sonnet",
+  "model": "gpt-4",
   "messages": [
     {
       "role": "system",

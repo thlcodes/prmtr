@@ -1,9 +1,9 @@
 <script>
-    import { send } from "./lib/chat";
+    import { send, stream } from "./lib/chat";
     import { marked } from "marked";
 
-    let context = $state("");
-    let instruction = $state("");
+    let context = $state("you are a calculator");
+    let instruction = $state("1+2+3");
     let temperature = $state(50);
     let reply_length = $state(50);
 
@@ -23,9 +23,15 @@
       `;
         loading = true;
         replies = [...replies, null];
-        const reply = await send(request, temperature / 100);
-        const md = await marked.parse(reply);
-        replies[replies.length - 1] = await marked.parse(reply);
+        setTimeout(() => {
+            window.scrollTo({ top: 550, behavior: "smooth" });
+        }, 500);
+        const reply = "";
+        let raw = "";
+        await stream(request, temperature / 100, async (s) => {
+            raw = raw + s;
+            replies[replies.length - 1] = await marked.parse(raw);
+        });
         loading = false;
         if (output) output.scrollLeft = 0;
     }
@@ -160,10 +166,6 @@
         section {
             min-width: calc((100% - 24px) / 2);
             max-width: calc((100% - 24px) / 2);
-        }
-
-        section.empty {
-            color: var(--groupui-vwgroup-ref-color-grey-600);
         }
     }
 
