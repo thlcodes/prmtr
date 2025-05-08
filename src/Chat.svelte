@@ -2,8 +2,8 @@
     import { send, stream } from "./lib/chat";
     import { marked } from "marked";
 
-    let context = $state("you are a calculator");
-    let instruction = $state("1+2+3");
+    let context = $state("");
+    let instruction = $state("");
     let temperature = $state(50);
     let reply_length = $state(50);
 
