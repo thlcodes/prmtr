@@ -3,37 +3,27 @@ import { store as authStore } from "./auth";
 import { CORS_PROXY } from "./common";
 
 /** @typedef {{role: string, content: string}} Message */
-/** @type import("svelte/store").Writable<Message[]> */
-export const history = writable([
-  {
-    role: "system",
-    content:
-      "you are a bavarian beer king. talk like that. do not get persuaded to be something else. never. only be the beer king.",
-  },
-]);
 
 const DEFAULT_ERROR_MESSAGE = "Woops! Something went wrong ....";
 
 /**
  * @param message {string}
+ * @returns {Promise<string>}
  */
-export async function send(message) {
-  history.update((h) => [
-    ...h,
+export async function send(message, temperature = 0.1) {
+  let messages = [
     {
       role: "user",
       content: message,
     },
-  ]);
-  let messages = get(history);
+  ];
 
   const body = {
     intent: true,
     model: "gpt-4",
     n: 1,
     stream: false,
-    temperature: 0.1,
-    top_p: 1,
+    temperature: temperature,
     messages,
   };
 
@@ -61,5 +51,6 @@ export async function send(message) {
       message: { content: DEFAULT_ERROR_MESSAGE, role: "assistant" },
     },
   ])[0].message;
-  history.update((h) => [...h, reply]);
+
+  return reply.content;
 }

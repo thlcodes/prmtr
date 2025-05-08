@@ -1,11 +1,11 @@
 :root {
-    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-family: var(--groupui-sys-font-family-primary);
     line-height: 1.5;
     font-weight: 400;
 
     color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+    color: black;
+    background-color: white;
 
     height: 100vh;
 
@@ -13,4 +13,24 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    --color-header: #002733;
+    --color-bg: white;
+    --color-button: #008075;
+}
+
+html,
+body {
+    padding: 0;
+    margin: 0;
+}
+
+.groupui-button {
+    background-color: var(--color-button);
+    border-radius: 99px;
+    padding: 20px 8px;
+}
+
+* {
+    box-sizing: border-box;
 }
