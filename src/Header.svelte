@@ -8,13 +8,13 @@
         <img src={Logo} alt="prompete" />
         Prompete
     </figure>
-    {#if $authStore.copilot_token}
+    {#if $authStore.authenticated}
         <span
             tabindex="0"
             role="button"
             onkeypress={() => {}}
-            onclick={() => {
-                logout();
+            onclick={async () => {
+                await logout();
             }}>Ausloggen</span
         >
     {/if}

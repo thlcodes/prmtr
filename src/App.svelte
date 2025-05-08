@@ -7,7 +7,7 @@
 
 <Header />
 
-{#if $authStore.copilot_token}
+{#if $authStore.authenticated}
     <Chat />
 {:else}
     <Auth />

@@ -1,5 +1,5 @@
 <script>
-    import { send, stream } from "./lib/chat";
+    import { stream } from "./lib/chat";
     import { marked } from "marked";
 
     let context = $state("");

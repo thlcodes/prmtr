@@ -1,6 +1,5 @@
 # @name device_code
 POST https://github.com/login/device/code?client_id=Iv1.b507a08c87ecfe98&scope=read:user
-Accept: application/json
 
 ###
 
@@ -12,8 +11,7 @@ Accept: application/json
 
 # @name copilot_token
 GET https://api.github.com/copilot_internal/v2/token
-Authorization: Bearer {{access_token.access_token}}
-Content-Type: application/json
+Authorization: Bearer ghu_65LCHBYo6j5NCPhmdzpmBzqj6BlNpL1zNGQo
 
 ###
 

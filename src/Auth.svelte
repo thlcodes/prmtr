@@ -3,10 +3,8 @@
     import {
         getDeviceCode,
         store as authStore,
-        waitForAccessToken,
-        getCopilotToken,
-        getUser,
-        logout,
+        waitForAuth,
+        check,
     } from "./lib/auth";
     import { get } from "svelte/store";
 
@@ -15,22 +13,23 @@
     });
 
     async function auth() {
-        if (!get(authStore).access_token) {
+        await check();
+        if (!get(authStore).authenticated) {
             await getDeviceCode();
-            await waitForAccessToken();
+            await waitForAuth();
         }
-        await getUser();
-        await getCopilotToken();
     }
 </script>
 
 <main>
-    {#if $authStore.access_token}
-        Authenticating ...
-    {:else if $authStore.user_code}
+    {#if $authStore.user_code}
         Melde dich mit folgendem Code in Github an:
         <section class="code">
-            {$authStore.user_code}
+            {#if $authStore.loading}
+                <groupui-loading embedded></groupui-loading>
+            {:else}
+                {$authStore.user_code}
+            {/if}
             <span
                 role="button"
                 onclick={() => {
@@ -48,8 +47,10 @@
             class="g-btn g-btn-medium gh"
             style="display: inline-block"
             href="https://github.com/login/device?skip_account_picker=true"
-            target="blank">Github öffnen</a
+            target="_blank">Github öffnen</a
         >
+    {:else}
+        <groupui-loading size="xxl"></groupui-loading>
     {/if}
 </main>
 
