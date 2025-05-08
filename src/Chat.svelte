@@ -1,5 +1,6 @@
 <script>
     import { send } from "./lib/chat";
+    import { marked } from "marked";
 
     let context = $state("");
     let instruction = $state("");
@@ -13,7 +14,7 @@
     async function create() {
         const request = `
         Beantworte die folgende Frage ensprechend dem hier gegebenen Kontexts.
-        ${reply_length <= 30 ? "Antworte kurz." : ""}
+        ${reply_length <= 30 ? "Antworte kurz." : reply_length > 70 ? "Antworte sehr ausführlich." : ""}
         <context>
         ${context}
         </context>
@@ -21,9 +22,15 @@
         ${instruction}
       `;
         loading = true;
-        replies = [...replies, await send(request, temperature / 100)];
+        replies = [...replies, null];
+        const reply = await send(request, temperature / 100);
+        const md = await marked.parse(reply);
+        replies[replies.length - 1] = await marked.parse(reply);
         loading = false;
+        if (output) output.scrollLeft = 0;
     }
+
+    let output;
 </script>
 
 <main>
@@ -32,7 +39,7 @@
             <label for="">Kontext</label>
             <textarea
                 class="g-textarea"
-                placeholder="z.B. Verhalte dich wie ein Product Manager.."
+                placeholder="z.B. Hintergrundinformationen, Beispiele, Vorlagen"
                 bind:value={context}
                 rows="4"
             ></textarea>
@@ -72,26 +79,24 @@
                 disabled={loading}
                 on:click={create}
             >
-                {#if loading}
-                    <groupui-loading embedded inverted></groupui-loading>
-                {:else}
-                    Erstellen
-                {/if}
+                Erstellen
             </button>
         </div>
     </section>
-    <section class="output">
-        {#if replies.length == 0}
-            <section class="g-card empty">
-                Du hast noch kein Ergebnis generieren lassen.
+    <section
+        class="output"
+        bind:this={output}
+        class:centered={replies.length <= 1}
+    >
+        {#each replies.toReversed() as reply}
+            <section class="g-card">
+                {#if reply}
+                    {@html reply}
+                {:else}
+                    <groupui-loading embedded></groupui-loading>
+                {/if}
             </section>
-        {:else}
-            {#each replies.slice(-2).reverse() as reply}
-                <section class="g-card">
-                    {reply}
-                </section>
-            {/each}
-        {/if}
+        {/each}
     </section>
 </main>
 
@@ -148,16 +153,21 @@
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        justify-content: center;
         padding: 60px;
         gap: 24px;
+        overflow-x: scroll;
 
         section {
-            width: 636px;
+            min-width: calc((100% - 24px) / 2);
+            max-width: calc((100% - 24px) / 2);
         }
 
         section.empty {
             color: var(--groupui-vwgroup-ref-color-grey-600);
         }
+    }
+
+    .output.centered {
+        justify-content: center;
     }
 </style>
