@@ -1,25 +1,27 @@
 <script>
-    /** @type {{entries: string[], current: string|null}} */
-    let { entries, current = $bindable() } = $props();
+    /** @typedef {{content?: string, title?: string, hidden?: boolean}} Context */
+    /** @type {{contexts: Context[], select: (s: number) => void}} */
+    let { contexts, select } = $props();
 </script>
 
 <nav>
-    {#if entries.length == 0}
+    {#if contexts.length == 0}
         Noch nichts gespeichert.
     {/if}
-    {#each entries as entry}
+    {#each contexts as context, idx}
         <section
             role="button"
             tabindex="0"
             onclick={() => {
-                current = entry;
+                select(idx);
             }}
             onkeydown={() => {}}
+            class:active={!context.hidden}
         >
-            {#if entry == null}
+            {#if context == null}
                 <groupui-loading size="s" embedded></groupui-loading>
             {:else}
-                {entry}
+                {context.title}
             {/if}
         </section>
     {/each}
@@ -35,6 +37,10 @@
             padding: 11px 0;
             cursor: pointer;
             color: var(--groupui-vwgroup-ref-color-vivid-green-600);
+
+            &.active {
+                font-weight: bold;
+            }
         }
     }
 </style>

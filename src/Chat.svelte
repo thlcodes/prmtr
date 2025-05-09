@@ -2,9 +2,13 @@
     import { ask, stream } from "./lib/chat";
     import { marked } from "marked";
     import Sidebar from "./Sidebar.svelte";
-    import { onMount, untrack } from "svelte";
+    import { onMount } from "svelte";
+    import AddIcon from "./assets/add.svg";
+    import HideIcon from "./assets/hide.svg";
 
-    let context = $state("");
+    /** @typedef {{content?: string, title?: string, hidden?: boolean}} Context */
+    /** @type {Context[]} */
+    let contexts = $state([]);
     let instruction = $state("");
     let temperature = $state(50);
     let reply_length = $state(50);
@@ -13,41 +17,21 @@
 
     let loading = $state(false);
 
-    /** @typedef {{name: string, context: string, instruction: string, temperature: number; reply_length: number}} Snapshot */
-    /** @type {Snapshot[]} */
-    let snapshots = $state([]);
-    let saving = $state(false);
-    /** @type {string|null} */
-    let currentSnapshot = $state(null);
-
-    $effect(() => {
-        if (currentSnapshot) {
-            untrack(() => {
-                const snapshot = snapshots.find(
-                    (e) => e.name == currentSnapshot,
-                );
-                if (snapshot) {
-                    ({ context, instruction, temperature, reply_length } =
-                        snapshot);
-                }
-            });
-        }
-    });
-
     onMount(() => {
         try {
-            snapshots = JSON.parse(localStorage.getItem("snapshots") || "[]");
+            contexts = JSON.parse(localStorage.getItem("contexts") || "[]");
         } catch (e) {
-            console.log("could not load snapshots:", e);
+            console.log("could not load contexts:", e);
         }
     });
 
     async function create() {
         const request = `
         Beantworte die folgende Frage ensprechend dem hier gegebenen Kontexts.
+        Erähne nie den Kontext. Wenn der Kontext leer ist, beantworte die Frage ohne ihn.
         ${reply_length <= 30 ? "Antworte kurz." : reply_length > 70 ? "Antworte sehr ausführlich." : ""}
         <context>
-        ${context}
+        ${contexts.map(($) => $.content).join("\n\n")}
         </context>
 
         ${instruction}
@@ -67,23 +51,6 @@
         if (output) output.scrollLeft = 0;
     }
 
-    async function save() {
-        saving = true;
-        snapshots = [...snapshots, null];
-        const name = await deriveTitle(context);
-        /** @type {Snapshot} */
-        const snapshot = {
-            name,
-            context,
-            instruction,
-            temperature,
-            reply_length,
-        };
-        snapshots[snapshots.length - 1] = snapshot;
-        localStorage.setItem("snapshots", JSON.stringify(snapshots));
-        saving = false;
-    }
-
     /**
      *
      * @param content {string}
@@ -95,14 +62,56 @@
         </context>
         Use at most 25 characters.
         Do not put the title in quotes or use ending punctuation.
+        Use the language you find in the context.
         Do not include one of the following, already existing titles:
-        ${snapshots
+        ${contexts
             .filter(($) => !!$)
-            .map(($) => $.name)
+            .map(($) => $.title)
             .join("\n")}
         `;
         const title = await ask(request, 0.1);
         return title;
+    }
+
+    /**
+     *
+     * @param {number} idx
+     */
+    async function updateTitle(idx) {
+        const context = contexts[idx];
+        if (!context) return;
+        contexts[idx].title = await deriveTitle(context.content);
+    }
+
+    /**
+     *
+     * @param {number} idx
+     */
+    function hideContext(idx) {
+        const context = contexts[idx];
+        if (!context) return;
+        if ((context.content ?? "").trim() == "") {
+            contexts = contexts.toSpliced(idx, 1);
+            return;
+        }
+        contexts[idx].hidden = true;
+        save();
+    }
+
+    /**
+     *
+     * @param {number} idx
+     */
+    function toggeContext(idx) {
+        const context = contexts[idx];
+        if (!context) return;
+        contexts[idx].hidden = !contexts[idx].hidden;
+        save();
+    }
+
+    function save() {
+        console.log("saving", contexts);
+        localStorage.setItem("contexts", JSON.stringify(contexts));
     }
 
     let output;
@@ -111,22 +120,55 @@
 <main>
     <section class="sidebar">
         <Sidebar
-            bind:current={currentSnapshot}
-            entries={snapshots.map((e) => e?.name)}
+            select={toggeContext}
+            contexts={contexts.filter(($) => !!$.title)}
         />
     </section>
     <section class="input">
-        <div>
-            <label for="">Kontext</label>
-            <textarea
-                class="g-textarea"
-                placeholder="z.B. Hintergrundinformationen, Beispiele, Vorlagen"
-                bind:value={context}
-                rows="4"
-            ></textarea>
+        <div class="contexts">
+            <groupui-headline heading="h3">Kontext</groupui-headline>
+            <div class="inner">
+                <div class="new">
+                    <label for="">Neu</label>
+                    <button
+                        class="new_context"
+                        on:click={() => {
+                            contexts = [{}, ...contexts];
+                        }}
+                    >
+                        <img src={AddIcon} alt="add" />
+                    </button>
+                </div>
+
+                {#each contexts as context, idx}
+                    {#if !context.hidden}
+                        <div class="context">
+                            <label for="">{context.title ?? "Neu"}</label>
+                            <textarea
+                                bind:value={contexts[idx].content}
+                                on:change={async () => {
+                                    await updateTitle(idx);
+                                    save();
+                                }}
+                                class="g-textarea"
+                                placeholder="z.B. Hintergrundinformationen, Beispiele, Vorlagen"
+                                rows="5"
+                            ></textarea>
+                            <img
+                                class="hide"
+                                src={HideIcon}
+                                on:click={() => {
+                                    hideContext(idx);
+                                }}
+                            />
+                        </div>
+                    {/if}
+                {/each}
+            </div>
         </div>
-        <div>
-            <label for="">Aufgabe</label><textarea
+        <div class="instructions">
+            <groupui-headline heading="h3">Aufgabe</groupui-headline>
+            <textarea
                 class="g-textarea"
                 bind:value={instruction}
                 placeholder="z.B. Erstelle eine User Story für.."
@@ -154,14 +196,6 @@
             </div>
         </div>
         <div class="buttons">
-            <button
-                class="g-btn g-btn-secondary"
-                class:g-btn-disabled={saving}
-                disabled={saving}
-                on:click={save}
-            >
-                Speichern
-            </button>
             <button
                 class="g-btn g-btn-primary"
                 class:g-btn-disabled={loading}
@@ -203,7 +237,7 @@
 
     .input {
         grid-area: input;
-        padding: 72px 220px;
+        padding: 72px 0px;
         background-color: white;
         display: grid;
         grid-template-columns: auto;
@@ -214,10 +248,72 @@
         > div {
             display: flex;
             flex-direction: column;
+            overflow: auto;
+
+            groupui-headline {
+                padding-bottom: 12px;
+            }
 
             label {
-                font-weight: bold;
+                font-size: 14px;
+                font-weight: 700;
+                padding-bottom: 2px;
             }
+
+            .inner {
+                display: flex;
+                flex-direction: row;
+                gap: 42px;
+                overflow-x: auto;
+
+                &::-webkit-scrollbar {
+                    display: none;
+                }
+
+                > div {
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .context {
+                    min-width: 440px;
+                    max-width: 440px;
+                    position: relative;
+
+                    .hide {
+                        position: absolute;
+                        top: 16px;
+                        right: -8px;
+                        cursor: pointer;
+                    }
+                }
+            }
+        }
+
+        .contexts {
+            padding-left: 220px;
+
+            button.new_context {
+                background-color: white;
+                border: 1px solid
+                    var(--groupui-vwgroup-ref-color-vivid-green-600);
+                border-radius: 4px;
+                height: 138px;
+                width: 90px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: var(
+                        --groupui-vwgroup-ref-color-vivid-green-100
+                    );
+                }
+            }
+        }
+
+        .instructions,
+        .sliders,
+        .buttons {
+            padding: 0 220px;
         }
 
         .sliders {
