@@ -157,7 +157,7 @@
                     </button>
                 </div>
 
-                {#each contexts.filter(($) => !$.hidden) as context, idx}
+                {#each contexts as context, idx}
                     {#if !context.hidden}
                         <div class="context">
                             <label for="">{context.title ?? "Neu"}</label>
