@@ -11,7 +11,7 @@ Accept: application/json
 
 # @name copilot_token
 GET https://api.github.com/copilot_internal/v2/token
-Authorization: Bearer ghu_65LCHBYo6j5NCPhmdzpmBzqj6BlNpL1zNGQo
+Authorization: Bearer {{access_token.access_token}}
 
 ###
 
