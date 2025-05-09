@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 type DeviceCodeResponse struct {
@@ -30,13 +31,15 @@ type AccessTokenResponse struct {
 }
 
 type CopilotTokenResponse struct {
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	RefreshIn int    `json:"refresh_in"`
 }
 
 type Session struct {
-	DeviceCode   string
-	AccessToken  string
-	CopilotToken string
+	DeviceCode         string
+	AccessToken        string
+	CopilotToken       string
+	CopilotTokenExpiry int64
 }
 
 func checkApiKey(w http.ResponseWriter, r *http.Request) bool {
@@ -158,28 +161,10 @@ func main() {
 
 		session.AccessToken = tokenResp.AccessToken
 
-		req, _ = http.NewRequest("GET", "https://api.github.com/copilot_internal/v2/token", nil)
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", "VSCode/1.99")
-		req.Header.Set("Authorization", "Bearer "+session.AccessToken)
-
-		resp, err = http.DefaultClient.Do(req)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			log.Printf("copilot_token status not ok: %d, %s", resp.StatusCode, err)
-			json.NewEncoder(w).Encode(map[string]bool{"authenticated": false})
-			return
-		}
-
-		var copilotResp CopilotTokenResponse
-		if err := json.NewDecoder(resp.Body).Decode(&copilotResp); err != nil {
-			fmt.Printf("access_token decode failed: %s", err)
-			json.NewEncoder(w).Encode(map[string]bool{"authenticated": false})
-			return
-		}
-
-		session.CopilotToken = copilotResp.Token
+		authenticated := getCopilotToken(session)
 		sessions.Store(cookie.Value, session)
-		json.NewEncoder(w).Encode(map[string]bool{"authenticated": true})
+
+		json.NewEncoder(w).Encode(map[string]bool{"authenticated": authenticated})
 	})
 
 	http.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -225,6 +210,14 @@ func main() {
 		if session.CopilotToken == "" {
 			http.Error(w, "Not authenticated", http.StatusUnauthorized)
 			return
+		}
+
+		if time.Now().Unix() >= session.CopilotTokenExpiry {
+			log.Println("refreshing token ...")
+			if !getCopilotToken(session) {
+				http.Error(w, "could not refresh copilot token", http.StatusUnauthorized)
+				return
+			}
 		}
 
 		var reqBody struct {
@@ -297,6 +290,14 @@ func main() {
 			return
 		}
 
+		if time.Now().Unix() >= session.CopilotTokenExpiry {
+			log.Println("refreshing token ...")
+			if !getCopilotToken(session) {
+				http.Error(w, "could not refresh copilot token", http.StatusUnauthorized)
+				return
+			}
+		}
+
 		var reqBody struct {
 			Message     string  `json:"message"`
 			Temperature float64 `json:"temperature"`
@@ -342,4 +343,27 @@ func main() {
 	}
 	fmt.Printf("Server starting on port %s...\n", port)
 	http.ListenAndServe(":"+port, nil)
+}
+
+func getCopilotToken(session *Session) bool {
+	req, _ := http.NewRequest("GET", "https://api.github.com/copilot_internal/v2/token", nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "VSCode/1.99")
+	req.Header.Set("Authorization", "Bearer "+session.AccessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("copilot_token status not ok: %d, %s", resp.StatusCode, err)
+		return false
+	}
+
+	var copilotResp CopilotTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&copilotResp); err != nil {
+		fmt.Printf("access_token decode failed: %s", err)
+		return false
+	}
+
+	session.CopilotToken = copilotResp.Token
+	session.CopilotTokenExpiry = time.Now().Unix() + int64(copilotResp.RefreshIn)
+	return true
 }

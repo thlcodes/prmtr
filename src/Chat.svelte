@@ -117,12 +117,29 @@
         localStorage.setItem("contexts", JSON.stringify(contexts));
     }
 
+    /**
+     *
+     * @param {number} idx
+     */
+    function del(idx) {
+        contexts = contexts.toSpliced(idx, 1);
+        save();
+    }
+
+    function reset() {
+        instruction = "";
+        temperature = 50;
+        reply_length = 50;
+        contexts = contexts.map(($) => ({ ...$, hidden: true }));
+        save();
+    }
+
     let output;
 </script>
 
 <main>
     <section class="sidebar">
-        <Sidebar select={toggeContext} {contexts} />
+        <Sidebar select={toggeContext} {del} {contexts} />
     </section>
     <section class="input">
         <div class="contexts">
@@ -140,7 +157,7 @@
                     </button>
                 </div>
 
-                {#each contexts as context, idx}
+                {#each contexts.filter(($) => !$.hidden) as context, idx}
                     {#if !context.hidden}
                         <div class="context">
                             <label for="">{context.title ?? "Neu"}</label>
@@ -196,6 +213,9 @@
             </div>
         </div>
         <div class="buttons">
+            <button class="g-btn g-btn-tertiary" on:click={reset}>
+                Zurücksetzen
+            </button>
             <button
                 class="g-btn g-btn-primary"
                 class:g-btn-disabled={loading}
@@ -323,12 +343,14 @@
         .sliders,
         .buttons {
             padding: 0 220px;
+            padding-bottom: 1px;
         }
 
         .sliders {
             display: grid;
             grid-template-columns: auto auto;
             grid-column-gap: 120px;
+            margin-top: -18px;
 
             groupui-slider {
                 margin-top: 24px;

@@ -1,12 +1,14 @@
 <script>
+    import TrashIcon from "./assets/trash.svg";
+
     /** @typedef {{content?: string, title?: string, hidden?: boolean}} Context */
-    /** @type {{contexts: Context[], select: (s: number) => void}} */
-    let { contexts, select } = $props();
+    /** @type {{contexts: Context[], select: (idx: number) => void, del: (idx: number) => void}} */
+    let { contexts, select, del } = $props();
 </script>
 
 <nav>
-    {#if contexts.length == 0}
-        Noch nichts gespeichert.
+    {#if contexts.filter(($) => !!$.title).length == 0}
+        <span class="empty">Noch nichts gespeichert.</span>
     {/if}
     {#each contexts as context, idx}
         {#if context.title}
@@ -24,6 +26,15 @@
                 {:else}
                     {context.title}
                 {/if}
+                <img
+                    class="delete"
+                    src={TrashIcon}
+                    alt="delete"
+                    onclick={(e) => {
+                        e.stopPropagation();
+                        del(idx);
+                    }}
+                />
             </section>
         {/if}
     {/each}
@@ -34,9 +45,17 @@
         padding-top: 40px;
         color: var(--groupui-vwgroup-ref-color-grey-400);
 
+        .empty {
+            padding-left: 24px;
+        }
+
         section {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
             padding: 11px 0;
             padding-left: 24px;
+            padding-right: 12px;
             cursor: pointer;
             color: var(--groupui-vwgroup-ref-color-vivid-green-600);
             border-left: 2px solid transparent;
@@ -45,6 +64,16 @@
                 font-weight: bold;
                 border-left: 2px solid
                     var(--groupui-vwgroup-ref-color-vivid-green-600);
+            }
+
+            &:hover {
+                .delete {
+                    display: initial;
+                }
+            }
+
+            .delete {
+                display: none;
             }
         }
     }
