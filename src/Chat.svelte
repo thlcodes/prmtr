@@ -31,7 +31,10 @@
         Erähne nie den Kontext. Wenn der Kontext leer ist, beantworte die Frage ohne ihn.
         ${reply_length <= 30 ? "Antworte kurz." : reply_length > 70 ? "Antworte sehr ausführlich." : ""}
         <context>
-        ${contexts.map(($) => $.content).join("\n\n")}
+        ${contexts
+            .filter(($) => !$.hidden)
+            .map(($) => $.content)
+            .join("\n\n")}
         </context>
 
         ${instruction}
@@ -119,10 +122,7 @@
 
 <main>
     <section class="sidebar">
-        <Sidebar
-            select={toggeContext}
-            contexts={contexts.filter(($) => !!$.title)}
-        />
+        <Sidebar select={toggeContext} {contexts} />
     </section>
     <section class="input">
         <div class="contexts">
@@ -237,7 +237,8 @@
 
     .input {
         grid-area: input;
-        padding: 72px 0px;
+        padding: 42px 0px;
+        padding-bottom: 72px;
         background-color: white;
         display: grid;
         grid-template-columns: auto;
@@ -265,6 +266,8 @@
                 flex-direction: row;
                 gap: 42px;
                 overflow-x: auto;
+                padding-right: 220px;
+                padding-bottom: 1px;
 
                 &::-webkit-scrollbar {
                     display: none;
@@ -273,6 +276,10 @@
                 > div {
                     display: flex;
                     flex-direction: column;
+                }
+
+                .new {
+                    margin-left: 220px;
                 }
 
                 .context {
@@ -291,7 +298,9 @@
         }
 
         .contexts {
-            padding-left: 220px;
+            groupui-headline {
+                margin-left: 220px;
+            }
 
             button.new_context {
                 background-color: white;
