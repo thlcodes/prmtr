@@ -58,3 +58,32 @@ export async function stream(message, temperature = 0.1, callback) {
     }
   }
 }
+
+/**
+ * @param message {string}
+ * @param temperature {number}
+ * @param callback {(c: string) => Promise<void>}
+ * @returns {Promise<string>}
+ */
+export async function ask(message, temperature = 0.1) {
+  const body = {
+    temperature: temperature,
+    message,
+  };
+
+  const CHAT_API_URL =
+    "https://prompete.cfapps.eu10.hana.ondemand.com/api/chat/ask";
+
+  const resp = await fetch(CHAT_API_URL, {
+    method: "POST",
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+
+  const payload = await resp.json();
+
+  if (payload.choices.length > 0) {
+    return payload.choices[0].message.content;
+  }
+  return "";
+}

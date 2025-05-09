@@ -24,7 +24,7 @@
     header {
         color: white;
         height: 64px;
-        padding: 0 72px;
+        padding: 0 24px;
         background-color: var(--color-header);
         display: flex;
         flex-direction: row;

@@ -1,6 +1,8 @@
 <script>
-    import { stream } from "./lib/chat";
+    import { ask, stream } from "./lib/chat";
     import { marked } from "marked";
+    import Sidebar from "./Sidebar.svelte";
+    import { onMount, untrack } from "svelte";
 
     let context = $state("");
     let instruction = $state("");
@@ -10,6 +12,35 @@
     let replies = $state([]);
 
     let loading = $state(false);
+
+    /** @typedef {{name: string, context: string, instruction: string, temperature: number; reply_length: number}} Snapshot */
+    /** @type {Snapshot[]} */
+    let snapshots = $state([]);
+    let saving = $state(false);
+    /** @type {string|null} */
+    let currentSnapshot = $state(null);
+
+    $effect(() => {
+        if (currentSnapshot) {
+            untrack(() => {
+                const snapshot = snapshots.find(
+                    (e) => e.name == currentSnapshot,
+                );
+                if (snapshot) {
+                    ({ context, instruction, temperature, reply_length } =
+                        snapshot);
+                }
+            });
+        }
+    });
+
+    onMount(() => {
+        try {
+            snapshots = JSON.parse(localStorage.getItem("snapshots") || "[]");
+        } catch (e) {
+            console.log("could not load snapshots:", e);
+        }
+    });
 
     async function create() {
         const request = `
@@ -36,10 +67,54 @@
         if (output) output.scrollLeft = 0;
     }
 
+    async function save() {
+        saving = true;
+        snapshots = [...snapshots, null];
+        const name = await deriveTitle(context);
+        /** @type {Snapshot} */
+        const snapshot = {
+            name,
+            context,
+            instruction,
+            temperature,
+            reply_length,
+        };
+        snapshots[snapshots.length - 1] = snapshot;
+        localStorage.setItem("snapshots", JSON.stringify(snapshots));
+        saving = false;
+    }
+
+    /**
+     *
+     * @param content {string}
+     */
+    async function deriveTitle(content) {
+        const request = `Derive a concise title that fits the given context.
+        <context>
+        ${content}
+        </context>
+        Use at most 25 characters.
+        Do not put the title in quotes or use ending punctuation.
+        Do not include one of the following, already existing titles:
+        ${snapshots
+            .filter(($) => !!$)
+            .map(($) => $.name)
+            .join("\n")}
+        `;
+        const title = await ask(request, 0.1);
+        return title;
+    }
+
     let output;
 </script>
 
 <main>
+    <section class="sidebar">
+        <Sidebar
+            bind:current={currentSnapshot}
+            entries={snapshots.map((e) => e?.name)}
+        />
+    </section>
     <section class="input">
         <div>
             <label for="">Kontext</label>
@@ -80,6 +155,14 @@
         </div>
         <div class="buttons">
             <button
+                class="g-btn g-btn-secondary"
+                class:g-btn-disabled={saving}
+                disabled={saving}
+                on:click={save}
+            >
+                Speichern
+            </button>
+            <button
                 class="g-btn g-btn-primary"
                 class:g-btn-disabled={loading}
                 disabled={loading}
@@ -111,11 +194,15 @@
         background-color: var(--groupui-vwgroup-ref-color-grey-100);
     }
     main {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-areas:
+            "sidebar input"
+            "output output";
+        grid-template-columns: 270px auto;
     }
 
     .input {
+        grid-area: input;
         padding: 72px 220px;
         background-color: white;
         display: grid;
@@ -152,10 +239,14 @@
         .buttons {
             display: flex;
             align-items: flex-end;
+            flex-direction: row;
+            justify-content: right;
+            gap: 16px;
         }
     }
 
     .output {
+        grid-area: output;
         display: flex;
         flex-direction: row;
         align-items: flex-start;
@@ -171,5 +262,11 @@
 
     .output.centered {
         justify-content: center;
+    }
+
+    .sidebar {
+        grid-area: sidebar;
+        background-color: white;
+        border-right: 1px solid var(--groupui-vwgroup-ref-color-grey-200);
     }
 </style>

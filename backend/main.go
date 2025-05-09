@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -268,6 +269,71 @@ func main() {
 			w.Write([]byte(line + "\n"))
 			w.(http.Flusher).Flush()
 		}
+	})
+
+	http.HandleFunc("/api/chat/ask", func(w http.ResponseWriter, r *http.Request) {
+		cors(w, r)
+		if r.Method == http.MethodOptions {
+			return
+		}
+		if !checkApiKey(w, r) {
+			return
+		}
+		cookie, err := r.Cookie("session")
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		sessionVal, ok := sessions.Load(cookie.Value)
+		if !ok {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+		session := sessionVal.(*Session)
+
+		if session.CopilotToken == "" {
+			http.Error(w, "Not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		var reqBody struct {
+			Message     string  `json:"message"`
+			Temperature float64 `json:"temperature"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Prepare Copilot API request
+		copilotReqBody := map[string]any{
+			"intent":      true,
+			"model":       "gpt-4",
+			"n":           1,
+			"stream":      false,
+			"temperature": reqBody.Temperature,
+			"messages": []map[string]string{
+				{"role": "user", "content": reqBody.Message},
+			},
+		}
+		copilotReqBytes, _ := json.Marshal(copilotReqBody)
+
+		copilotReq, _ := http.NewRequest("POST", "https://api.business.githubcopilot.com/chat/completions",
+			bytes.NewReader(copilotReqBytes))
+		copilotReq.Header.Set("Content-Type", "application/json; charset=utf-8")
+		copilotReq.Header.Set("Authorization", "Bearer "+session.CopilotToken)
+		copilotReq.Header.Set("Editor-Version", "vscode/1.99")
+
+		resp, err := http.DefaultClient.Do(copilotReq)
+		if err != nil {
+			http.Error(w, "Failed to contact Copilot API", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		data, _ := io.ReadAll(resp.Body)
+		w.Write(data)
 	})
 
 	port := os.Getenv("PORT")
